@@ -23,12 +23,14 @@ python3 -m unittest discover -s tests -v
 - 规模：`COUNT ≤ 5000` 要在 0.1 秒内给出；`DAILY` 的 `INTERVAL > 1` 时不许一天一天空转，内存 O(输出)。
 - 对照自证：小跨度输入与「逐日扫描再过滤」的参考实现逐项一致。
 
-## 现在的行为
+## 实现口径
 
-- `expand` 的 `WEEKLY` 分支固定 `current += timedelta(days=7)`，`INTERVAL` 完全没用上。
-- `MONTHLY` 分支每次 `current += timedelta(days=30)`：日期会漂移，`BYMONTHDAY` 也不看。
-- `BYDAY` 按写法顺序输出，`WE,MO` 就先给周三再给周一，结果不是递增的。
-- `FREQ` 写错时既不报错也不产出（悄悄给空结果）；`parse_date` 抛的是 Python 原始异常。
+- `WEEKLY` 以首个不早于起始日的匹配周为锚，每 `INTERVAL` 周取一周；同一周内多个 `BYDAY` 按周一..周日顺序给出。
+- `DAILY` 每隔 `INTERVAL` 天步进（大步长不逐天空转）；有 `BYDAY` 时在步进结果上过滤。
+- `MONTHLY` 按自然月推进，`BYMONTHDAY` 缺省取起始日的日号；该月没有这一天就跳过这个月。
+- `BYDAY` 排序去重；输出严格递增、不重复；起始日符合规则时包含；`UNTIL` 含当天；`COUNT` 被 `UNTIL` 截断时可以少于 `COUNT`。
+- 校验：`FREQ` 只认 `DAILY`/`WEEKLY`/`MONTHLY`；未知键、缺值、`INTERVAL` 非正整数、`BYMONTHDAY` 不在 1..31、
+  `BYDAY` 非法星期名都会报 `RuleError` 并指出是第几项。
 
 ## 计划新增的能力
 
